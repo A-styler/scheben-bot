@@ -1,8 +1,12 @@
-import random
+import configparser
+import time
+import flask
+import sys
 from multiprocessing import Process
 
+import random
 import telebot
-
+from scripts.database import *
 from scripts.helpers import *
 
 config = configparser.ConfigParser()
@@ -10,18 +14,31 @@ config.read('config.ini')
 
 TOKEN = config['ACCESS']['TOKEN']
 URL = config['HOOK']['URL']
-CERT = config['HOOK']['CERT']
 
 bot = telebot.TeleBot(TOKEN)
 
+app = flask.Flask(__name__)
+
+@app.route('/HOOK', methods=['POST', 'GET'])
+def webhook_handler():
+    if flask.request.headers.get('content-type') == 'application/json':
+        json_string = flask.request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        get_bot_update(update)
+        return ''
+    else:
+        flask.abort(403)
 
 def endless_parsing():
+    print('endless_parsing', file=sys.stdout)
     while True:
         try:
+            #print('endless_parsing_try', file=sys.stdout)
             period = random.randint(60, 120)
             sources = get_sources()
             raw_posts = get_all_posts_by_sources(sources)
             new_links = find_new_posts(sources, raw_posts)
+            print(new_links)
             if len(new_links):
                 new_posts = get_new_posts_info(new_links)
                 users = read_users()
@@ -36,7 +53,6 @@ def endless_parsing():
             print('endless_parsing error')
             print(error)
 
-
 @bot.channel_post_handler(commands=['start'])
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -46,6 +62,7 @@ def start(message):
     bot.send_message(
         message.chat.id,
         text='Отныне ты подписан на самые выгодные предложения для путешествий! Поздравляю! \nОстались вопросы? - /help')
+    message_logger(message)
 
 
 @bot.channel_post_handler(commands=['set'])
@@ -55,6 +72,7 @@ def set_adding(message):
     bot.send_message(
         message.chat.id,
         'Введи через запятую ключевые слова для отслеживания, например: \nСанкт-Петербург, Петербург, Питер, Москва, Франция')
+    message_logger(message)
 
 
 @bot.channel_post_handler(commands=['get'])
@@ -71,6 +89,7 @@ def get_cities(message):
                 ', '.join(capital_cities)))
     else:
         bot.send_message(message.chat.id, text='Вы ничего не отслеживаете')
+    message_logger(message)
 
 
 @bot.channel_post_handler(commands=['stop'])
@@ -79,6 +98,7 @@ def get_cities(message):
     edit_user(message.chat.id, '')
     bot.send_message(
         message.chat.id, text='Вам больше не будут приходить уведомления =(')
+    message_logger(message)
 
 
 @bot.message_handler(commands=['help'])
@@ -89,6 +109,7 @@ def show_help(message):
 /set - ввести список городов
 /get - посмотреть, что вы отслеживаете
 /stop - отписаться от рассылки и забыть про скидки''')
+    message_logger(message)
 
 
 @bot.message_handler(commands=['status'])
@@ -97,7 +118,7 @@ def status(message):
     for line in read_users():
         result += '{}: {}\n'.format(line['user_id'], line['cities'])
     bot.send_message(message.chat.id, result)
-
+    message_logger(message)
 
 @bot.channel_post_handler()
 @bot.message_handler()
@@ -115,21 +136,30 @@ def handle_message(message):
     else:
         bot.send_message(message.chat.id, text='Шо?')
     # bot.send_message(message.chat.id, text='Приветики =)')
+    message_logger(message)
 
 
 def get_bot_update(update):
+    #print('get_bot_update', file=sys.stdout)
     bot.process_new_updates([update])
 
 
 def set_hook():
+    #print('set_hook', file=sys.stdout)
     bot.remove_webhook()
-    time.sleep(0.1)
-    bot.set_webhook(url='https://{}/HOOK'.format(URL),
-                    certificate=open(CERT, 'rb'))
+    time.sleep(2)
+    bot.set_webhook(url='https://{}/HOOK'.format(URL))
 
 
 def main():
+    #print('main', file=sys.stdout)
     create_database()
     init_last_posts()
+    #print('after_init_last_posts', file=sys.stdout)
     client_process = Process(target=endless_parsing, args=())
+    #print('after_client_process_1', file=sys.stdout)
     client_process.start()
+    #print('after_client_process_2', file=sys.stdout)
+
+set_hook()
+main()
