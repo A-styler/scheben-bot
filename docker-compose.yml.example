@@ -1,0 +1,36 @@
+version: '3'
+
+networks:
+  traefik-proxy:
+    external: true
+
+services:
+
+  python:
+    build:
+      context: ./app
+    working_dir: /app
+    container_name: python
+    restart: unless-stopped
+    volumes:
+      - scheben-bot:/app/database
+    ports:
+      - 33202
+    networks:
+      - traefik-proxy
+    labels:
+      traefik.enable: "true"
+      # Allow 80 with domain
+      traefik.http.routers.scheben.entrypoints: 'web'
+      traefik.http.routers.scheben.rule: 'Host(`your-domain`)'
+      # Redirect to 443
+      traefik.http.middlewares.traefik-redirectscheme.redirectscheme.scheme: 'https'
+      traefik.http.routers.scheben.middlewares: 'traefik-redirectscheme'
+      # Allow 443 with domain
+      traefik.http.routers.scheben-ssl.entrypoints: 'websecure'
+      traefik.http.routers.scheben-ssl.tls.certresolver: 'myresolver'
+      traefik.http.routers.scheben-ssl.rule: 'Host(`your-domain`)'
+
+volumes:
+  scheben-bot:
+    driver: "local"

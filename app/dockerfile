@@ -1,0 +1,13 @@
+FROM python:3.6-buster
+
+EXPOSE 33202
+
+WORKDIR /app
+COPY . /app
+
+RUN apt-get -y update && \
+    apt-get -y install sqlite3 && \
+    rm -rf /var/lib/apt/lists/*  && \
+    pip install --no-cache-dir -r requirements.txt
+
+CMD ["uwsgi", "--http", ":33202", "--processes", "2", "--module", "wsgi:app"]

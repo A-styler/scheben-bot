@@ -1,1 +1,2 @@
-database/*
+app/config.ini
+docker-compose.yml

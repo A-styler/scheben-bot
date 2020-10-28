@@ -1,8 +1,0 @@
-Flask
-python-telegram-bot
-bs4
-fuzzywuzzy
-python-Levenshtein
-pytelegrambotapi
-lxml
-uwsgi

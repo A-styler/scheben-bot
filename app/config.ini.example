@@ -1,0 +1,8 @@
+[ACCESS]
+TOKEN = xxxx:xxxxxxxxxxxxxxxxxxxxxxx
+
+[FILES]
+USER_BASE = database/base.db
+
+[HOOK]
+URL = domain:port
